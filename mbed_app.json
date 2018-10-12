@@ -1,0 +1,17 @@
+{
+    "config": {
+        "usb-host-ch":{
+            "help": "(for GR-PEACH) 0:ch0 1:ch1",
+            "value": "1"
+        },
+        "audio-camera-shield":{
+            "help": "(for GR-PEACH) 0:not use 1:use",
+            "value": "1"
+        }
+    },
+    "target_overrides": {
+        "*": {
+            "target.components": ["SPIF"]
+        }
+    }
+}
