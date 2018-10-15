@@ -1,12 +1,11 @@
 #include "mbed.h"
 #include "EasyPlayback.h"
 #include "EasyDec_WavCnv2ch.h"
-
 #include "USBMSD.h"
 #include "ObservingBlockDevice.h"
 #include "SPIFBlockDevice.h"
-#include "FlashIAPBlockDevice_2.h"
-#include "mbed_drv_cfg.h"
+#include "FlashIAPBlockDevice.h"
+#include "SlicingBlockDevice.h"
 #include "HeapBlockDevice.h"
 #include "SDBlockDevice_GRBoard.h"
 #include "USBHostMSD.h"
@@ -29,7 +28,8 @@ typedef enum {
 static SPIFBlockDevice spi_bd(D11, D12, D13, D10, 32000000);
 static DigitalOut hold(D8);
 #endif
-static FlashIAPBlockDevice_2 flashiap_bd(FLASH_BASE + 0x100000, FLASH_SIZE - 0x100000);
+static FlashIAPBlockDevice flashiap_bd_base;
+static SlicingBlockDevice flashiap_bd(&flashiap_bd_base, 0x100000, 0x800000);
 static HeapBlockDevice heap_bd(0x100000);
 static SDBlockDevice_GRBoard sd_bd;
 static USBHostMSD usb_bd;
@@ -68,21 +68,13 @@ static Thread msdTask(osPriorityAboveNormal);
 static Semaphore usb_sem(0);
 static bool heap_bd_format = false;
 
-static void storage_change(BlockDevice * p_bd) {
-    storage_change_flg = true;
-    storage_change_timer.reset();
-    storage_change_timer.start();
-    AudioPlayer.skip();
-}
-
-static void wait_storage_change(void) {
-    while (storage_change_timer.read_ms() < 1000) {
-        ThisThread::sleep_for(100);
-    }
-    storage_change_timer.stop();
-    storage_change_timer.reset();
-    storage_change_flg = false;
-}
+// Function prototypes
+static void msd_task(void);
+static void storage_change(BlockDevice * p_bd);
+static void chk_storage_change(void);
+static void chk_bd_change(void);
+static void storage_btn_fall(void);
+static void skip_btn_fall(void);
 
 static void usb_callback_func(void) {
     usb_sem.release();
@@ -97,66 +89,84 @@ static void msd_task(void) {
     }
 }
 
-static void chk_bd_change(void) {
-    if (p_fs != NULL) {
-        p_fs->unmount();
+static void storage_change(BlockDevice * p_bd) {
+    storage_change_flg = true;
+    storage_change_timer.reset();
+    storage_change_timer.start();
+    AudioPlayer.skip();
+}
+
+static void chk_storage_change(void) {
+    if (!storage_change_flg) {
+        return;
     }
-    if (bd_index != tmp_bd_index) {
-        while (true) {
-            bd_index = tmp_bd_index;
-            printf("\r\nconnecting %s\r\n", base_bd_str[bd_index]);
+
+    // wait storage change
+    while (storage_change_timer.read_ms() < 1000) {
+        ThisThread::sleep_for(100);
+    }
+    storage_change_timer.stop();
+    storage_change_timer.reset();
+    storage_change_flg = false;
+
+    p_fs->unmount();
+    chk_bd_change();
+    p_fs->mount(base_bd[bd_index]);
+}
+
+static void chk_bd_change(void) {
+    if (bd_index == tmp_bd_index) {
+        return;
+    }
+    if (p_usb != NULL) {
+        USBMSD * wk = p_usb;
+        p_usb = NULL;
+        delete wk;
+    }
+    if (p_observing_bd != NULL) {
+        delete p_observing_bd;
+    }
+    if (p_fs != NULL) {
+        delete p_fs;
+    }
+    while (true) {
+        bd_index = tmp_bd_index;
+        printf("\r\nconnecting %s\r\n", base_bd_str[bd_index]);
 #if USE_SAMPLE_SHIELD
-            if (bd_index == BD_SPI) {
-                hold = 1;
-                break;
-            } else 
+        if (bd_index == BD_SPI) {
+            hold = 1;
+            break;
+        } else 
 #endif
-            if (bd_index == BD_HEAP) {
-                if (!heap_bd_format) {
-                    FATFileSystem::format(&heap_bd);
-                    heap_bd_format = true;
-                }
-                break;
-            } else if (bd_index == BD_SD) {
-                while ((!sd_bd.connect()) && (bd_index == tmp_bd_index)) {
-                    ThisThread::sleep_for(500);
-                }
-                if (sd_bd.connected()) {
-                    break;
-                }
-            } else if (bd_index == BD_USB) {
-                while ((!usb_bd.connect()) && (bd_index == tmp_bd_index)) {
-                    ThisThread::sleep_for(500);
-                }
-                if (usb_bd.connected()) {
-                    break;
-                }
-            } else {
+        if (bd_index == BD_HEAP) {
+            if (!heap_bd_format) {
+                FATFileSystem::format(&heap_bd);
+                heap_bd_format = true;
+            }
+            break;
+        } else if (bd_index == BD_SD) {
+            while ((!sd_bd.connect()) && (bd_index == tmp_bd_index)) {
+                ThisThread::sleep_for(500);
+            }
+            if (sd_bd.connected()) {
                 break;
             }
+        } else if (bd_index == BD_USB) {
+            while ((!usb_bd.connect()) && (bd_index == tmp_bd_index)) {
+                ThisThread::sleep_for(500);
+            }
+            if (usb_bd.connected()) {
+                break;
+            }
+        } else {
+            break;
         }
-        if (p_fs != NULL) {
-            delete p_fs;
-        }
-        p_fs = new FATFileSystem(base_bd_str[bd_index]);
-        if (p_usb != NULL) {
-            USBMSD * wk = p_usb;
-            p_usb = NULL;
-            delete wk;
-        }
-        if (p_observing_bd != NULL) {
-            delete p_observing_bd;
-            p_observing_bd = NULL;
-        }
-        p_observing_bd = new ObservingBlockDevice(base_bd[bd_index]);
-        p_observing_bd->attach(&storage_change);
-        p_usb = new USBMSD(p_observing_bd);
-        p_usb->attach(&usb_callback_func);
-        ThisThread::sleep_for(500);
     }
-    if (p_fs != NULL) {
-        p_fs->mount(p_observing_bd);
-    }
+    p_fs = new FATFileSystem(base_bd_str[bd_index]);
+    p_observing_bd = new ObservingBlockDevice(base_bd[bd_index]);
+    p_observing_bd->attach(&storage_change);
+    p_usb = new USBMSD(p_observing_bd);
+    p_usb->attach(&usb_callback_func);
 }
 
 static void storage_btn_fall(void) {
@@ -166,7 +176,6 @@ static void storage_btn_fall(void) {
         tmp_bd_index = 0;
     }
     storage_change(NULL);
-    AudioPlayer.skip();
 }
 
 static void skip_btn_fall(void) {
@@ -179,27 +188,29 @@ int main() {
     char file_path[10 + FILE_NAME_LEN];
     int file_num;
 
-    // decoder setting
+    // Decoder setting
     AudioPlayer.add_decoder<EasyDec_WavCnv2ch>(".wav");
     AudioPlayer.add_decoder<EasyDec_WavCnv2ch>(".WAV");
 
-    // volume control
+    // Volume control
     AudioPlayer.outputVolume(0.5);  // Volume control (min:0.0 max:1.0)
 
-    // button setting
+    // Start usb task
+    msdTask.start(&msd_task);
+
+    // Set BlockDevice
+    chk_bd_change();
+    p_fs->mount(base_bd[bd_index]);
+
+    // Button setting
     skip_btn.fall(&skip_btn_fall);
     storage_btn.fall(&storage_btn_fall);
 
-    msdTask.start(&msd_task);
-    storage_change(NULL);
-
     while (true) {
-        if (storage_change_flg) {
-            wait_storage_change();
-            chk_bd_change();
-        }
+        // Confirm storage change
+        chk_storage_change();
 
-        // file search
+        // File search
         file_num = 0;
         sprintf(file_path, "/%s/", base_bd_str[bd_index]);
         d = opendir(file_path);
@@ -207,11 +218,11 @@ int main() {
             while ((p = readdir(d)) != NULL) {
                 size_t len = strlen(p->d_name);
                 if (len < FILE_NAME_LEN) {
-                    // make file path
+                    // Make file path
                     sprintf(file_path, "/%s/%s", base_bd_str[bd_index], p->d_name);
                     printf("%s\r\n", file_path);
 
-                    // playback
+                    // Playback
                     if (AudioPlayer.play(file_path)) {
                         file_num++;
                     }
@@ -222,7 +233,9 @@ int main() {
             }
             closedir(d);
         }
-        if (file_num == 0) {
+
+        // If there is no files, wait until the storage is changed
+        if ((file_num == 0) && (!storage_change_flg)) {
             printf("No files\r\n");
             while (!storage_change_flg) {
                 ThisThread::sleep_for(100);

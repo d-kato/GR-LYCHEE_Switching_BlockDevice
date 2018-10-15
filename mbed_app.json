@@ -11,7 +11,7 @@
     },
     "target_overrides": {
         "*": {
-            "target.components": ["SPIF"]
+            "target.components": ["SPIF", "FLASHIAP"]
         }
     }
 }
