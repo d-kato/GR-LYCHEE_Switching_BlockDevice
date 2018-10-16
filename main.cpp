@@ -226,9 +226,9 @@ int main() {
                     if (AudioPlayer.play(file_path)) {
                         file_num++;
                     }
-                    if (storage_change_flg) {
-                        break;
-                    }
+                }
+                if (storage_change_flg) {
+                    break;
                 }
             }
             closedir(d);
