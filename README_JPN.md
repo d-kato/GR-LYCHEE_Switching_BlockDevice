@@ -11,7 +11,7 @@ GR-LYCHEEで動作するサンプルプログラムです。
 * USBメモリ (任意)
 * オーディオスピーカー (任意)
 
-![](docs/img/composition.jpg)  
+![](docs/img/composition.png)  
 
 ``Winbond Flash Memory Sample Shield`` 上のデバイス ``W25M161AVEIT`` と ``W74M12FVZPIQ`` の Serial NOR が使用できます。デバイスの切り替えは Shield 上の Jumper で行います。Jumper設定については User Guide を参照ください。  
 Winbond Flash Memory Sample Shield を使用しない場合は `main.cpp` の下記マクロに`0`を設定してください。

@@ -12,7 +12,7 @@ It is a sample program that can read and write various BlockDevice from PC on Fi
 * USB memory (Optional)
 * Audio speaker (Optional)
 
-![](docs/img/composition.jpg)  
+![](docs/img/composition.png)  
 
 You can use Serial NOR of ``W25M161AVEIT`` and ``W74M12FVZPIQ`` on ``Winbond Flash Memory Sample Shield``. Switch devices using Jumper on Shield. Please refer to User Guide for Jumper setting.  
 When not using Winbond Flash Memory Sample Shield, set `0` to the following macro of` main.cpp`.
