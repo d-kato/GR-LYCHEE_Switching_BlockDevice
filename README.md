@@ -28,8 +28,8 @@ Pressing `USER_BUTTON1` BlockDevice switches in the following order.
 
 | BlockDevice | Description |
 |:------------|:------------|
-| SPIF | The Serial NOR on "Winbond Flash Memory Sample Shield" is used as storage. |
-| FlashIap | Serial Flash on GR-LYCHEE. The first 1 MB is used as a program and the remaining 7 MB is used as storage. |
-| Heap | 1 MB of heap memory is used as storage. |
-| SD | SD is used as storage. |
-| USB | Uses USB memory as storage. |
+| SPIF        | The Serial NOR on "Winbond Flash Memory Sample Shield" is used as storage. |
+| FlashIAP    | Serial Flash on GR-LYCHEE. The first 1 MB is used as a program and the remaining 7 MB is used as storage. |
+| Heap        | 1 MB of heap memory is used as storage. |
+| SD          | SD is used as storage. |
+| USB         | Uses USB memory as storage. |

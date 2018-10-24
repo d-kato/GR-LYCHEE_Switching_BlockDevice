@@ -28,7 +28,7 @@ GR-LYCHEEとPCをUSBケーブルで接続することで、デバイス内をマ
 | BlockDevice | Description |
 |:------------|:------------|
 | SPIF        | Winbond Flash Memory Sample Shield 上のSerial NORをストレージとして使用。 |
-| FlashIap    | GR-LYCHEE上のSerial Flash。先頭1MBをプログラムとして使用し、残り7MBをストレージとして使用。|
+| FlashIAP    | GR-LYCHEE上のSerial Flash。先頭1MBをプログラムとして使用し、残り7MBをストレージとして使用。|
 | Heap        | ヒープメモリのうち1MBをストレージとして使用。 |
 | SD          | SDをストレージとして使用。 |
 | USB         | USBメモリをストレージとして使用。 |

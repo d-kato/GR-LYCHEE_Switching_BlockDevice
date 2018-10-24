@@ -1,4 +1,5 @@
 #include "mbed.h"
+#include "FATFileSystem.h"
 #include "EasyPlayback.h"
 #include "EasyDec_WavCnv2ch.h"
 #include "USBMSD.h"
@@ -26,7 +27,6 @@ typedef enum {
 
 #if USE_SAMPLE_SHIELD
 static SPIFBlockDevice spi_bd(D11, D12, D13, D10, 32000000);
-static DigitalOut hold(D8);
 #endif
 static FlashIAPBlockDevice flashiap_bd_base;
 static SlicingBlockDevice flashiap_bd(&flashiap_bd_base, 0x100000, 0x800000);
@@ -132,12 +132,6 @@ static void chk_bd_change(void) {
     while (true) {
         bd_index = tmp_bd_index;
         printf("\r\nconnecting %s\r\n", base_bd_str[bd_index]);
-#if USE_SAMPLE_SHIELD
-        if (bd_index == BD_SPI) {
-            hold = 1;
-            break;
-        } else 
-#endif
         if (bd_index == BD_HEAP) {
             if (!heap_bd_format) {
                 FATFileSystem::format(&heap_bd);
